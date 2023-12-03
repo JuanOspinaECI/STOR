@@ -284,6 +284,7 @@ __attribute__( ( always_inline) ) static inline void Port_RestoreContex(void)
 
 __attribute__ ( ( naked ) ) void SysTick_Handler(void)
 {
+	//HAL_IncTick();
 
 	Port_SaveContex();
 
@@ -292,6 +293,7 @@ __attribute__ ( ( naked ) ) void SysTick_Handler(void)
 	PortActualSp = Scheduler_GetNextTask(PortActualSp);
 
 	Port_RestoreContex();
+
 }
 
 __attribute__ ( ( naked ) ) void PendSV_Handler( void )

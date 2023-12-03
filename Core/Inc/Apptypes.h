@@ -14,6 +14,8 @@
 #define TASK_BASE_ERROR			0x0400
 #define MUTEX_BASE_ERROR		0x0500
 #define SEM_BASE_ERROR			0x0600
+#define EVENTS_BASE_ERROR		0x0700
+#define MESSAGE_BASE_ERROR		0x0800
 
 #ifndef f
 	typedef float f;

@@ -13,6 +13,7 @@
 #include "Task.h"
 #include "Scheduler.h"
 #include "Port.h"
+#include "Messages.h"
 
 
 #define RTOS_Start()		Scheduler_Start()

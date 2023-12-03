@@ -19,15 +19,13 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-
-
-
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdint.h>
 #include "Rtosinclude.h"
 #include "Queue.h"
 #include "Mutex.h"
+#include "Events.h"
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
 #endif
@@ -38,16 +36,26 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
-T_TaskTCB Tarea1;
-T_TaskTCB Tarea2;
 T_TaskTCB Tarea3;
 T_TaskTCB Tarea4;
-u32 StackTarea1[256];
-u32 StackTarea2[256];
+T_TaskTCB Tarea5;
+T_TaskTCB Tarea7;
+
 u32 StackTarea3[256];
 u32 StackTarea4[256];
+u32 StackTarea5[256];
+u32 StackTarea7[256];
 
-T_MutexHandler Mutex;
+u16 x = 10;
+u16 y = 10;
+u16 R0y = 1;
+u16 R1y = 10;
+u16 L0y = 20;
+u16 L1y = 31;
+s8 MarcP1 	= 0;
+s8 MarcP2	= 0;
+
+T_MutexHandler_Ptr Mutex_Display;
 
 /* USER CODE END PTD */
 
@@ -90,17 +98,19 @@ T_MutexHandler Mutex;
 #define GPIOB_CRH_CNF8				( 2UL << 2UL )
 #define GPIOB_IDR					(*( ( volatile u32 * ) 0x40010C08 ) )
 #define GPIOB_IDR_8					(1UL << 8UL )
-//#define GPIOB_BSRR 					(*( ( volatile u32 * ) 0x40011010 ) )
-//#define GPIOB_BSRR_BS14				( 1UL << 14UL )
-//#define GPIOB_BSRR_BR1				( 1UL << 30UL )
-
-//#define GPIOB_ODR					(*( ( volatile u32 * ) 0x40010C0C ) )
 #define GPIOB_ODR					(*( ( volatile u32 * ) 0x40010C08 ) )
 #define B13_CLEAR_AND				( 1UL << 13 )
 #define B14_CLEAR_AND				( 1UL << 14 )
 
 #define GPIOC_ODR					(*( ( volatile u32 * ) 0x40011008 ) )
 
+
+#define TEST1						0x0001
+
+#define RightUp						GPIO_PIN_14
+#define	RightDown					GPIO_PIN_8
+#define LeftDown					GPIO_PIN_9
+#define LeftUp						GPIO_PIN_15
 
 
 /* USER CODE END PD */
@@ -111,18 +121,24 @@ T_MutexHandler Mutex;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+I2C_HandleTypeDef hi2c1;
 
 /* USER CODE BEGIN PV */
+
+T_EventHanlder Evento;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
-void FunctionTarea1 (void);
-void FunctionTarea2 (void);
 void FunctionTarea3 (void);
 void FunctionTarea4 (void);
+void FunctionTarea5 (void);
+void FunctionTarea6 (void);
+void FunctionTarea7 (void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -139,36 +155,15 @@ int main(void)
   /* USER CODE BEGIN 1 */
 
 	RTOS_Init();
-	//Port_InitTickTimer();
-	Task_Create(&Tarea1, 1, "Tarea1",1, (pu32)StackTarea1, 256, FunctionTarea1);
-	Task_Create(&Tarea2, 2, "Tarea2",1, (pu32)StackTarea2, 256, FunctionTarea2);
+
 	Task_Create(&Tarea3, 3, "Tarea3",1, (pu32)StackTarea3, 256, FunctionTarea3);
-	Task_Create(&Tarea4, 4, "Tarea4",2, (pu32)StackTarea4, 256, FunctionTarea4);
+	Task_Create(&Tarea4, 4, "Tarea4",1, (pu32)StackTarea4, 256, FunctionTarea4);
+	Task_Create(&Tarea5, 5, "Tarea4",2, (pu32)StackTarea5, 256, FunctionTarea5);
+	Task_Create(&Tarea7, 7, "Tarea4",2, (pu32)StackTarea7, 256, FunctionTarea7);
+
+	Mutex_Init(Mutex_Display);
 
 
-	*RCC_APB2ENR |= RCC_APB2ENR_IOPC_EN |RCC_APB2ENR_IOPB_EN;
-	GPIOC_CRH |= GPIOC_CRH_MODER13;// | GPIOC_CRH_CNF13; // Colector abierto revisar para entregable 1
-	GPIOC_BSRR |= GPIOC_BSRR_BS13; // Encender LED
-
-	//*RCC_APB2ENR |= RCC_APB2ENR_IOPC_EN;
-	GPIOC_CRH |= GPIOC_CRH_MODER14;// | GPIOC_CRH_CNF13; // Colector abierto revisar para entregable 1
-	GPIOC_BSRR |= GPIOC_BSRR_BR14; // Encender LED
-
-	//*RCC_APB2ENR |= RCC_APB2ENR_IOPB_EN;
-	GPIOB_CRH |= GPIOB_CRH_MODER13;// | GPIOB_CRH_CNF12; // Colector abierto revisar para entregable 1
-	GPIOC_BSRR |= GPIOB_BSRR_BS13;	// Encender LED
-
-
-	//Habilitar puerto como in para boton
-	GPIOB_CRH &= GPIOB_CRH_MODER8;
-	GPIOB_CRH &= ~(3UL<<2UL);
-	GPIOB_CRH |= GPIOB_CRH_CNF8;
-
-	GPIOB_CRH |= GPIOB_CRH_MODER12; //habilitar como salida B12
-
-
-
-	RTOS_Start();
 
   /* USER CODE END 1 */
 
@@ -189,8 +184,20 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+	ssd1306_Init();
 
+	ssd1306_SetColor(White);
+
+	  //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+
+	  if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8) == 1){HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);}
+
+  RTOS_Start();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -240,56 +247,267 @@ void SystemClock_Config(void)
   }
 }
 
-/* USER CODE BEGIN 4 */
-void FunctionTarea1(void){
-	for(;;)
-	{
-		if( ( GPIOC_ODR & B13_CLEAR_AND ) == 0 )
-			GPIOC_BSRR |= GPIOC_BSRR_BS13;
-		else
-			GPIOC_BSRR |= GPIOC_BSRR_BR13;
-		Task_Sleep(1000);
-		// LED 1 - 0.5 HZ
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
 
-		//Task_Sleep(500);
-	}
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 400000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
 }
-void FunctionTarea2(void){
-	for(;;)
-	{
-		if( ( GPIOC_ODR & B14_CLEAR_AND ) == 0 )
-			GPIOC_BSRR |= GPIOC_BSRR_BS14;
-		else
-			GPIOC_BSRR |= GPIOC_BSRR_BR14;
-		Task_Sleep(500);
-		// LED 2 - 1 HZ
-	}
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : PB12 PB13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB14 PB8 */
+  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_8;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PA9 PA15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_9|GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
 }
+
+/* USER CODE BEGIN 4 */
+
 void FunctionTarea3(void){
 	for(;;)
 	{
-		if( ( GPIOB_ODR & B13_CLEAR_AND ) == 0 )
-			GPIOB_BSRR |= GPIOB_BSRR_BS13;
-		else
-			GPIOB_BSRR |= GPIOB_BSRR_BR13;
-		Task_Sleep(100);
+		Events_WaitAny(&Evento, 0x001);
+		Events_Clear(&Evento, 0x001);
+		Events_Clear(&Evento, 0x004);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+		Task_Sleep(200);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+		Task_Sleep(200);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+		Task_Sleep(200);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+		Task_Sleep(200);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+		Events_Set(&Evento, 0x004);
 		// LED 3 - 5HZ
 	}
 }
 void FunctionTarea4(void){
 	for(;;)
 	{
-		Task_Sleep(20);
-		if((GPIOB_IDR & GPIOB_IDR_8) == 0){ // Preguntar si boton. Si se oprime no entra al if
-			GPIOB_BSRR |= GPIOB_BSRR_BR12;
-		}
-		else
-			GPIOB_BSRR |= GPIOB_BSRR_BS12;
+		Events_WaitAny(&Evento, 0x002);
+		Events_Clear(&Evento, 0x002);
+		//Events_Clear(&Evento, 0x004);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+		Task_Sleep(500);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+		//Events_Set(&Evento, 0x004);
+
 		//Task_CheckTimeBlockedTask();
 		//Leer entrada digital
 		// Encender o apagar led
 	}
 }
+
+void FunctionTarea5(void){
+	u8 dirID	= 0;
+	u8 dirUPD 	= 0;
+
+
+	dirID 	= 0; //izquierda
+	dirUPD 	= 0; //UP
+
+	Events_Set(&Evento, 0x004);
+
+	for(;;)
+	{
+
+
+
+		if(dirID == 0)x++;
+		else x--;
+		if(SSD1306_WIDTH - 1 == x)
+		{
+			dirID = 1;
+			x = SSD1306_WIDTH/2;
+			y = SSD1306_HEIGHT/2;
+			MarcP1++;
+			if(MarcP1 == 10)
+			{
+				MarcP2 = 0;
+				MarcP1 =0;
+			}
+			Events_Set(&Evento,0x001);
+			Task_Sleep(600);
+		}
+		if(x == 1)
+		{
+			dirID = 0;
+			x = SSD1306_WIDTH/2;
+			y = SSD1306_HEIGHT/2;
+			MarcP2++;
+			if(MarcP2 == 10){
+				MarcP2 = 0;
+				MarcP1 =0;
+			}
+			Events_Set(&Evento,0x001);
+			Task_Sleep(600);
+		}
+		if(x == 5 && y >= L0y && y <=L1y){
+			dirID = 0;
+			Events_Set(&Evento,0x002);
+		}
+		if(x == SSD1306_WIDTH - 5 && y >= R0y && y <=R1y)
+		{
+			dirID = 1;
+			Events_Set(&Evento,0x002);
+		}
+
+		// Esperar por mensaje
+		//Dormir tarea
+		if((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_14) == 1) && (R1y != SSD1306_HEIGHT - 1) ){R0y++;R1y++;}
+		if((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8) == 1) && (R0y != 1) ){R0y--;R1y--;}
+
+		if((HAL_GPIO_ReadPin(GPIOA, LeftDown) == 1) && (L1y != SSD1306_HEIGHT - 1)) {L0y++; L1y++;}
+		if((HAL_GPIO_ReadPin(GPIOA, LeftUp) == 1) && (L0y != 1) ){L0y--;L1y--;}
+
+		//Luego de recibir mensaje, continuar con codigo
+
+		if(dirUPD == 0)y++;
+		else y--;
+		if(SSD1306_HEIGHT - 1 == y) dirUPD = 1;
+		if(y == 1 ) dirUPD = 0;
+
+
+
+
+
+		Task_Sleep(1);
+		ssd1306_UpdateScreen();
+
+
+		// Fin mutex de display
+		Mutex_Give(Mutex_Display);
+
+
+		Events_WaitAny(&Evento, 0x004);
+		Task_Sleep(1);
+
+		//Mutex de display
+		Mutex_Take(Mutex_Display);
+	}
+}
+
+void FunctionTarea6(void)
+{
+
+	while(1)
+	{
+		if((HAL_GPIO_ReadPin(GPIOB, RightUp) == 1) && (R1y != SSD1306_HEIGHT - 1) ){R0y++;R1y++;}
+		if((HAL_GPIO_ReadPin(GPIOB, RightDown) == 1) && (R0y != 1) ){R0y--;R1y--;}
+
+		if((HAL_GPIO_ReadPin(GPIOA, LeftUp) == 1) && (L1y != SSD1306_HEIGHT - 1)) {L0y++; L1y++;}
+		if((HAL_GPIO_ReadPin(GPIOA, LeftDown) == 1) && (L0y != 1) ){L0y--;L1y--;}
+
+		// mandar informacion por un mensaje a la tarea 4
+		Task_Sleep(1);
+
+	}
+}
+
+void FunctionTarea7(void)
+{
+	while(1)
+	{
+
+		//Mutex de display
+		Mutex_Take(Mutex_Display);
+
+		ssd1306_Clear();
+
+		ssd1306_DrawLine(1, 1, SSD1306_WIDTH - 1, 1);
+		ssd1306_DrawLine(1, SSD1306_HEIGHT - 1, 1, 1);
+		ssd1306_DrawLine(SSD1306_WIDTH - 1, SSD1306_HEIGHT - 1, 1, SSD1306_HEIGHT - 1);
+		ssd1306_DrawLine(SSD1306_WIDTH - 1, SSD1306_HEIGHT - 1, SSD1306_WIDTH - 1, 1);
+
+		ssd1306_DrawLine(5,L0y,5,L1y);
+		ssd1306_DrawLine(3,L0y,3,L1y);
+		ssd1306_DrawLine(4,L0y,4,L1y);
+
+		ssd1306_DrawLine(SSD1306_WIDTH - 5,R0y,SSD1306_WIDTH - 5,R1y);
+		ssd1306_DrawLine(SSD1306_WIDTH - 3,R0y,SSD1306_WIDTH - 3,R1y);
+		ssd1306_DrawLine(SSD1306_WIDTH - 4,R0y,SSD1306_WIDTH - 4,R1y);
+
+		ssd1306_SetCursor(50, 15);
+		ssd1306_WriteChar(MarcP1+'0',Font_7x10);
+		ssd1306_SetCursor(SSD1306_WIDTH - 50, 15);
+		ssd1306_WriteChar(MarcP2+'0',Font_7x10);
+
+		ssd1306_DrawPixel(x, y);
+
+		Mutex_Give(Mutex_Display);
+
+		Task_Sleep(10);
+
+		//Fin  mutex de display
+
+	}
+}
+
 
 /* USER CODE END 4 */
 

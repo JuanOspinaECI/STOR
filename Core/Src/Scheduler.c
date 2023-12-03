@@ -12,6 +12,8 @@
 #include "Port.h"
 #include "Scheduler.h"
 
+
+
 T_QueueHandler ReadyTaskQueue[RTOS_SYSTEM_PRIORITIES];
 T_TaskTCB_Ptr ActualTaskPtr = NULL;
 T_TaskTCB IdleTaskHandler;
@@ -138,6 +140,7 @@ u16 Scheduler_CreateIdleTask()
 	IdleTaskHandler.TaskStackSize			= RTOS_MIN_STACK_SIZE;
 	IdleTaskHandler.TaskFunction			= IdleTask;
 	IdleTaskHandler.TaskStatus				= TASK_READY;
+	IdleTaskHandler.TaskWaitEvents 		= 0;
 	IdleTaskHandler.TaskActualSP			= (u32)Port_InitTaskStack(IdleTaskHandler.TaskStack, IdleTaskHandler.TaskStackSize,IdleTaskHandler.TaskFunction);
 	IdleTaskHandler.QueueElement.DataPtr	= &IdleTaskHandler;
 	IdleTaskHandler.QueueElement.Next 		= NULL;

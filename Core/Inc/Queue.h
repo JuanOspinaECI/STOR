@@ -40,7 +40,9 @@ u16 Queue_Init(T_QueueHandlerPtr Queue);
 u16 Queue_GetElementsCount(T_QueueHandlerPtr Queue);
 u16 Queue_Enqueue(T_QueueHandlerPtr Queue, T_QueueElementPtr Element, pv Data);
 u16 Queue_Dequeue(T_QueueHandlerPtr Queue, pv * Data);
+u16 Queue_DequeueElement(T_QueueHandlerPtr Queue, T_QueueElementPtr * Element);
 u16 Queue_Copy(T_QueueHandlerPtr Origin, T_QueueHandlerPtr Destinado);
+
 
 
 #endif /* QUEUE_H_ */

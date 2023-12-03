@@ -32,6 +32,7 @@ typedef struct
 	pu32 TaskStack;
 	u32 TaskStackSize;
 	u32 TaskActualSP;
+	u16 TaskWaitEvents;
 	TaskCallback TaskFunction;
 	T_QueueElement QueueElement;
 	unsigned long long TaskSleepTime;

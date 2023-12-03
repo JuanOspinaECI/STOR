@@ -83,6 +83,32 @@ u16 Queue_Dequeue(T_QueueHandlerPtr Queue, pv * Data)
 	return QUEUE_ERR_NULL_PARAM;
 }
 
+u16 Queue_DequeueElement(T_QueueHandlerPtr Queue, T_QueueElementPtr * Element)
+{
+	if((Queue != NULL) && (Element != NULL))
+	{
+		vPortEnterCritical();
+		if(Queue->Head != NULL)
+		{
+			*Element = Queue->Head;
+			Queue->Head = Queue->Head->Next;
+			Queue->ElementsCount--;
+			if(Queue->Head == NULL)
+			{
+				Queue->Tail = NULL;
+				Queue->ElementsCount = 0;
+			}
+			vPortExitCritical();
+			return QUEUE_OK;
+		}
+		Queue->ElementsCount = 0;
+		Queue->Tail = NULL;
+		vPortExitCritical();
+		return QUEUE_ERR_EMPTY;
+	}
+	return QUEUE_ERR_NULL_PARAM;
+}
+
 u16 Queue_Copy(T_QueueHandlerPtr Origin, T_QueueHandlerPtr Destinado)
 {
 	u16 Res = QUEUE_ERR_NULL_PARAM;

@@ -48,6 +48,7 @@ u16 Task_Create(T_TaskTCB_Ptr TCB, u16 Id, const char *Name, u8 Priority, pu32 S
 			TCB->TaskStackSize	= StackSize;
 			TCB->TaskFunction	= Function;
 			TCB->TaskStatus		= TASK_READY;
+			TCB->TaskWaitEvents = 0;
 			TCB->TaskActualSP	= (u32)Port_InitTaskStack(TCB->TaskStack, TCB->TaskStackSize,TCB->TaskFunction);
 			TCB->QueueElement.DataPtr = TCB;
 			TCB->QueueElement.Next = NULL;

@@ -31,6 +31,10 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "fonts.h"
+#include "ssd1306_defines.h"
+#include "ssd1306.h"
+
 
 /* USER CODE END Includes */
 
