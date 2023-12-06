@@ -36,15 +36,17 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
-T_TaskTCB Tarea3;
-T_TaskTCB Tarea4;
-T_TaskTCB Tarea5;
-T_TaskTCB Tarea7;
+T_TaskTCB Buzzer;
+T_TaskTCB Buzzer2;
+T_TaskTCB Mov;
+T_TaskTCB Display;
+T_TaskTCB PreGame;
 
-u32 StackTarea3[256];
-u32 StackTarea4[256];
-u32 StackTarea5[256];
-u32 StackTarea7[256];
+u32 StackBuzzer[256];
+u32 StackBuzzer2[256];
+u32 StackMov[256];
+u32 StackDisplay[256];
+u32 StackPreGame[256];
 
 u16 x = 10;
 u16 y = 10;
@@ -106,6 +108,7 @@ T_MutexHandler_Ptr Mutex_Display;
 
 
 #define TEST1						0x0001
+#define START						0x1000
 
 #define RightUp						GPIO_PIN_14
 #define	RightDown					GPIO_PIN_8
@@ -134,11 +137,13 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
-void FunctionTarea3 (void);
-void FunctionTarea4 (void);
-void FunctionTarea5 (void);
+void FunctionPreGame(void);
+void FunctionBuzzer (void);
+void FunctionBuzzer2 (void);
+void FunctionMov(void);
 void FunctionTarea6 (void);
-void FunctionTarea7 (void);
+void FunctionDisplay (void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -156,10 +161,12 @@ int main(void)
 
 	RTOS_Init();
 
-	Task_Create(&Tarea3, 3, "Tarea3",1, (pu32)StackTarea3, 256, FunctionTarea3);
-	Task_Create(&Tarea4, 4, "Tarea4",1, (pu32)StackTarea4, 256, FunctionTarea4);
-	Task_Create(&Tarea5, 5, "Tarea4",2, (pu32)StackTarea5, 256, FunctionTarea5);
-	Task_Create(&Tarea7, 7, "Tarea4",2, (pu32)StackTarea7, 256, FunctionTarea7);
+	Task_Create(&Buzzer,	1, "Buzzer",	2, (pu32)StackBuzzer,	 256,	 FunctionBuzzer);
+	Task_Create(&Buzzer2,	2, "Buzzer2",	2, (pu32)StackBuzzer2,	 256,	 FunctionBuzzer2);
+	Task_Create(&Mov,		3, "Mov",		3, (pu32)StackMov,		 256,	 FunctionMov);
+	Task_Create(&Display,	4, "Display",	3, (pu32)StackDisplay,	 256,	 FunctionDisplay);
+	Task_Create(&PreGame,	5, "PreGame",	1, (pu32)StackPreGame,	 256,	 FunctionPreGame);
+
 
 	Mutex_Init(Mutex_Display);
 
@@ -191,13 +198,12 @@ int main(void)
 
 	ssd1306_SetColor(White);
 
-	  //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
-	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+	//HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
 
-	  if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8) == 1){HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);}
 
-  RTOS_Start();
+	RTOS_Start();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -324,7 +330,38 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-void FunctionTarea3(void){
+void FunctionPreGame(void)
+{
+	ssd1306_Clear();
+
+	ssd1306_DrawLine(1, 1, SSD1306_WIDTH - 1, 1);
+	ssd1306_DrawLine(1, SSD1306_HEIGHT - 1, 1, 1);
+	ssd1306_DrawLine(SSD1306_WIDTH - 1, SSD1306_HEIGHT - 1, 1, SSD1306_HEIGHT - 1);
+	ssd1306_DrawLine(SSD1306_WIDTH - 1, SSD1306_HEIGHT - 1, SSD1306_WIDTH - 1, 1);
+
+	ssd1306_DrawLine(5,L0y,5,L1y);
+	ssd1306_DrawLine(3,L0y,3,L1y);
+	ssd1306_DrawLine(4,L0y,4,L1y);
+
+	ssd1306_DrawLine(SSD1306_WIDTH - 5,R0y,SSD1306_WIDTH - 5,R1y);
+	ssd1306_DrawLine(SSD1306_WIDTH - 3,R0y,SSD1306_WIDTH - 3,R1y);
+	ssd1306_DrawLine(SSD1306_WIDTH - 4,R0y,SSD1306_WIDTH - 4,R1y);
+
+	ssd1306_SetCursor(15, 15);
+	ssd1306_WriteChar(*"Pulse el boton",Font_7x10);
+	ssd1306_SetCursor(15, 25);
+	ssd1306_WriteChar(*"Para iniciar",Font_7x10);
+	ssd1306_UpdateScreen();
+
+	while(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_14) == 0);
+
+	Events_Set(&Evento, START);
+
+
+}
+
+void FunctionBuzzer(void){
+	Events_WaitAll(&Evento, START);
 	for(;;)
 	{
 		Events_WaitAny(&Evento, 0x001);
@@ -344,7 +381,8 @@ void FunctionTarea3(void){
 		// LED 3 - 5HZ
 	}
 }
-void FunctionTarea4(void){
+void FunctionBuzzer2(void){
+	Events_WaitAll(&Evento, START);
 	for(;;)
 	{
 		Events_WaitAny(&Evento, 0x002);
@@ -363,7 +401,8 @@ void FunctionTarea4(void){
 	}
 }
 
-void FunctionTarea5(void){
+void FunctionMov(void){
+	Events_WaitAll(&Evento, START);
 	u8 dirID	= 0;
 	u8 dirUPD 	= 0;
 
@@ -375,9 +414,6 @@ void FunctionTarea5(void){
 
 	for(;;)
 	{
-
-
-
 		if(dirID == 0)x++;
 		else x--;
 		if(SSD1306_WIDTH - 1 == x)
@@ -432,10 +468,6 @@ void FunctionTarea5(void){
 		if(SSD1306_HEIGHT - 1 == y) dirUPD = 1;
 		if(y == 1 ) dirUPD = 0;
 
-
-
-
-
 		Task_Sleep(1);
 		ssd1306_UpdateScreen();
 
@@ -454,7 +486,7 @@ void FunctionTarea5(void){
 
 void FunctionTarea6(void)
 {
-
+	Events_WaitAll(&Evento, START);
 	while(1)
 	{
 		if((HAL_GPIO_ReadPin(GPIOB, RightUp) == 1) && (R1y != SSD1306_HEIGHT - 1) ){R0y++;R1y++;}
@@ -469,8 +501,9 @@ void FunctionTarea6(void)
 	}
 }
 
-void FunctionTarea7(void)
+void FunctionDisplay(void)
 {
+	Events_WaitAll(&Evento, START);
 	while(1)
 	{
 
